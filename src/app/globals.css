@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 97%;
+    --foreground: 222 47% 11%;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-midnight-950 text-ivory-50;
+    min-height: 100vh;
+  }
+
+  /* Fine dividers — editorial style */
+  hr {
+    @apply border-midnight-800/30;
+  }
+
+  /* Subtle scrollbar — midnight theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-midnight-700/40 rounded-full;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-midnight-600/60;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(51, 65, 85, 0.4) transparent;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-verified/20 text-midnight-950;
+  }
+}
+
+@layer components {
+  /* Card surfaces */
+  .surface-ivory {
+    @apply bg-ivory-50 border border-midnight-200/10 rounded-lg;
+  }
+
+  .surface-elevated {
+    @apply bg-white border border-midnight-100/20 rounded-lg shadow-sm;
+  }
+
+  /* Status indicators */
+  .status-verified {
+    @apply text-verified bg-verified/10 border-verified/20;
+  }
+
+  .status-pending {
+    @apply text-pending bg-pending/10 border-pending/20;
+  }
+
+  .status-conflicting {
+    @apply text-conflicting bg-conflicting/10 border-conflicting/20;
+  }
+
+  /* Fine editorial borders */
+  .divider-fine {
+    @apply border-b border-midnight-200/10;
+  }
+
+  /* Compact density text */
+  .text-compact {
+    @apply text-sm leading-snug tracking-tight;
+  }
+
+  /* Sidebar nav link base */
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150;
+  }
+
+  .nav-link-idle {
+    @apply text-midnight-400 hover:text-ivory-50 hover:bg-midnight-800/50;
+  }
+
+  .nav-link-active {
+    @apply text-ivory-50 bg-verified/10 border-l-2 border-verified;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.15s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Overlay for mobile drawer */
+  .overlay-backdrop {
+    @apply fixed inset-0 bg-midnight-950/60 backdrop-blur-sm z-40;
+  }
+}
