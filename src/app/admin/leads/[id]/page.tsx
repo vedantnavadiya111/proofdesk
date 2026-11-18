@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   FileCheck2,
   RefreshCw,
+  Info,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,11 +70,14 @@ export default function LeadDetailPage({ params }: PageProps) {
 
   const cleanPhone = parentPhone.replace(/\D/g, '');
   const whatsappAppUrl = cleanPhone
+    ? `https://api.whatsapp.com/send/?phone=${cleanPhone}&text=${encodeURIComponent(shareText)}&type=phone_number&app_absent=0`
+    : `https://api.whatsapp.com/send/?text=${encodeURIComponent(shareText)}`;
+  const whatsappWaMeUrl = cleanPhone
     ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(shareText)}`
-    : `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    : `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   const whatsappWebUrl = cleanPhone
-    ? `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(shareText)}`
-    : `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    ? `https://web.whatsapp.com/send/?phone=${cleanPhone}&text=${encodeURIComponent(shareText)}`
+    : `https://web.whatsapp.com/send/?text=${encodeURIComponent(shareText)}`;
 
   const handleWhatsAppShare = (url: string, channelName: string) => {
     const newLog = {
@@ -358,9 +362,23 @@ export default function LeadDetailPage({ params }: PageProps) {
                       Target: <strong>Rajesh Sharma</strong>
                     </span>
                   </div>
-                  <p className="text-[10px] text-midnight-400 mt-1">
-                    Direct click-to-chat opens a WhatsApp window with this parent and pre-fills the message with the unique token link.
-                  </p>
+                  
+                  {/* Explanation of Click-to-chat */}
+                  <div className="mt-2 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-md text-[11px] text-emerald-950 space-y-1">
+                    <p className="font-semibold text-emerald-900 flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5 text-emerald-700" />
+                      How Direct WhatsApp Chat Works:
+                    </p>
+                    <p className="leading-relaxed">
+                      • <strong>Why contacts/search appeared:</strong> The default number <code className="font-mono bg-emerald-100/70 px-1 py-0.5 rounded text-emerald-900">+91 98765 43210</code> is fictional demo data. WhatsApp verifies if the number is registered. Since it's not active on WhatsApp, WhatsApp Web falls back to your contacts search bar.
+                    </p>
+                    <p className="leading-relaxed">
+                      • <strong>To open a 1-on-1 chat directly:</strong> Type any active WhatsApp number (such as your own phone number with country code, e.g. <code className="font-mono bg-emerald-100/70 px-1 py-0.5 rounded text-emerald-900">91XXXXXXXXXX</code>) into the box above and click either button!
+                    </p>
+                    <p className="text-[10px] text-emerald-800 italic">
+                      * In compliance with WhatsApp anti-spam policies, click-to-chat pre-fills the message and requires the user to tap Send in WhatsApp.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Link Box */}
