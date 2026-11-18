@@ -44,6 +44,7 @@ interface PageProps {
 export default function LeadDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const [selectedLang, setSelectedLang] = useState<DossierLanguage>('hi');
+  const [parentPhone, setParentPhone] = useState<string>('919876543210');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [dossierToken, setDossierToken] = useState<string>(DEMO_DOSSIER_TOKEN);
@@ -65,6 +66,32 @@ export default function LeadDetailPage({ params }: PageProps) {
     demoUniversity.name,
     dossierUrl
   );
+
+  const cleanPhone = parentPhone.replace(/\D/g, '');
+  const whatsappAppUrl = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(shareText)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+  const whatsappWebUrl = cleanPhone
+    ? `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(shareText)}`
+    : `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+
+  const handleWhatsAppShare = (url: string, channelName: string) => {
+    const newLog = {
+      id: `act-${Date.now()}`,
+      lead_id: demoLead.id,
+      dossier_id: null,
+      action: 'dossier_shared',
+      details: {
+        channel: channelName,
+        recipient_phone: cleanPhone || 'Not specified',
+        language: selectedLang,
+      },
+      performed_by: 'Counsellor (Admin)',
+      created_at: new Date().toISOString(),
+    };
+    setTimeline((prev) => [newLog, ...prev]);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const handleGenerateDossier = async () => {
     setIsGenerating(true);
@@ -150,12 +177,14 @@ export default function LeadDetailPage({ params }: PageProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" className="bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs shadow-xs">
-              <Send className="w-3.5 h-3.5 mr-1.5" />
-              Share on WhatsApp
-            </Button>
-          </a>
+          <Button
+            size="sm"
+            onClick={() => handleWhatsAppShare(whatsappAppUrl, 'whatsapp_app')}
+            className="bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs shadow-xs"
+          >
+            <Send className="w-3.5 h-3.5 mr-1.5" />
+            Share on WhatsApp
+          </Button>
           <Link href={`/dossier/${dossierToken}`} target="_blank">
             <Button size="sm" variant="outline" className="text-xs">
               <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
@@ -186,6 +215,13 @@ export default function LeadDetailPage({ params }: PageProps) {
                 <div className="space-y-1">
                   <span className="text-midnight-500 block">Parent / Guardian Name</span>
                   <span className="font-semibold text-midnight-950 text-sm">{demoLead.parent_name}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-midnight-500 block">Parent WhatsApp Mobile</span>
+                  <span className="font-semibold text-midnight-900 font-mono flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-[#25D366]" />
+                    {parentPhone}
+                  </span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-midnight-500 block">Allotted University</span>
@@ -292,10 +328,42 @@ export default function LeadDetailPage({ params }: PageProps) {
 
               {/* Share & Actions Box */}
               <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-midnight-600">
-                  Dossier Link & Parent Messaging
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-midnight-600">
+                    WhatsApp Delivery & Click-to-Chat
+                  </h3>
+                  <span className="text-[11px] text-midnight-500 font-mono">
+                    User-initiated wa.me intent
+                  </span>
+                </div>
 
+                {/* Recipient Phone Input */}
+                <div className="space-y-1 bg-white p-3 rounded-md border border-midnight-200/80">
+                  <label className="text-xs font-semibold text-midnight-900 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-[#25D366]" />
+                      Parent WhatsApp Phone Number:
+                    </span>
+                    <span className="text-[10px] text-midnight-400 font-mono">Country code + number (no spaces)</span>
+                  </label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="tel"
+                      value={parentPhone}
+                      onChange={(e) => setParentPhone(e.target.value)}
+                      placeholder="e.g. 919876543210"
+                      className="flex-1 h-9 px-3 text-xs bg-ivory-50 border border-midnight-200 rounded-md font-mono text-midnight-950 focus:outline-none focus:ring-1 focus:ring-midnight-900"
+                    />
+                    <span className="text-[11px] text-midnight-500 font-sans">
+                      Target: <strong>Rajesh Sharma</strong>
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-midnight-400 mt-1">
+                    Direct click-to-chat opens a WhatsApp window with this parent and pre-fills the message with the unique token link.
+                  </p>
+                </div>
+
+                {/* Link Box */}
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -309,9 +377,10 @@ export default function LeadDetailPage({ params }: PageProps) {
                   </Button>
                 </div>
 
+                {/* Pre-drafted text */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] text-midnight-500">
-                    <span>Pre-drafted WhatsApp Message ({selectedLang.toUpperCase()}):</span>
+                    <span>Pre-drafted Message ({selectedLang.toUpperCase()}):</span>
                     <button
                       onClick={handleCopyMessage}
                       className="text-verified-dark font-medium hover:underline flex items-center gap-1 cursor-pointer"
@@ -325,13 +394,23 @@ export default function LeadDetailPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                    <Button className="bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs h-9">
-                      <Send className="w-3.5 h-3.5 mr-1.5" />
-                      Open WhatsApp Click-to-Chat
-                    </Button>
-                  </a>
+                {/* WhatsApp Action Buttons */}
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                  <Button
+                    onClick={() => handleWhatsAppShare(whatsappWebUrl, 'whatsapp_web')}
+                    variant="outline"
+                    className="text-xs h-9 border-[#25D366] text-emerald-800 hover:bg-emerald-50"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 mr-1.5 text-[#25D366]" />
+                    Open in WhatsApp Web
+                  </Button>
+                  <Button
+                    onClick={() => handleWhatsAppShare(whatsappAppUrl, 'whatsapp_app')}
+                    className="bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs h-9 shadow-xs"
+                  >
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    Open WhatsApp App (wa.me)
+                  </Button>
                   <Link href={`/dossier/${dossierToken}`} target="_blank">
                     <Button variant="outline" className="text-xs h-9">
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
