@@ -165,7 +165,7 @@ async function seed() {
   console.log(`    ✓ ${demoActivityLogs.length} activity logs inserted`);
 
   console.log('\n✅ Seed complete! ProofDesk is ready.\n');
-  console.log('Demo dossier URL: /dossier/demo-aarav-sharma-niu-2024');
+  console.log('Demo dossier URL: /dossier/demo-aarav-sharma-niu-2026');
   console.log('Admin dashboard: /admin');
 }
 

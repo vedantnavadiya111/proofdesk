@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
             .maybeSingle();
 
           const shareToken = existingDossier?.share_token ||
-            `demo-${lead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2024`;
+            `demo-${lead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2026`;
 
           const dossierRecord = {
             lead_id,
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
     }
 
     const matchedDossier = getDossierByLeadId(lead.id);
-    const token = matchedDossier?.share_token || `demo-${lead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2024`;
+    const token = matchedDossier?.share_token || `demo-${lead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2026`;
 
     const dossier: Dossier = {
       ...(matchedDossier || demoDossier),

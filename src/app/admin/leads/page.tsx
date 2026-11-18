@@ -206,7 +206,7 @@ export default function LeadsPage() {
                       {(() => {
                         const token = lead.dossiers?.[0]?.share_token ||
                           getDossierByLeadId(lead.id)?.share_token ||
-                          `demo-${lead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2024`;
+                          `demo-${lead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2026`;
                         return (
                           <div className="flex items-center gap-1.5">
                             <Link href={`/admin/leads/${lead.id}`}>

@@ -29,7 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Evidence Library', href: '/admin/evidence', icon: Library },
   { label: 'Peer Volunteers', href: '/admin/volunteers', icon: UserCheck },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-  { label: 'Parent Trust Dossier', href: '/dossier/demo-aarav-sharma-niu-2024', icon: ExternalLink },
+  { label: 'Parent Trust Dossier', href: '/dossier/demo-aarav-sharma-niu-2026', icon: ExternalLink },
 ];
 
 function isActive(pathname: string, href: string): boolean {

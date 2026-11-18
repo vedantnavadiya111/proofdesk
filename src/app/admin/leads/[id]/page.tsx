@@ -52,7 +52,7 @@ export default function LeadDetailPage({ params }: PageProps) {
   // Resolve initial lead from demo store or fallback
   const initialLead = getLeadById(leadId) || demoLead;
   const initialDossier = getDossierByLeadId(initialLead.id);
-  const initialToken = initialDossier?.share_token || `demo-${initialLead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2024`;
+  const initialToken = initialDossier?.share_token || `demo-${initialLead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2026`;
 
   const [lead, setLead] = useState<Lead>(initialLead);
   const [selectedLang, setSelectedLang] = useState<DossierLanguage>(initialLead.preferred_language || 'hi');
