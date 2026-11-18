@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -33,10 +33,13 @@ import {
   demoUniversity,
   demoActivityLogs,
   DEMO_DOSSIER_TOKEN,
+  getLeadById,
+  getDossierByLeadId,
 } from '@/lib/demo-data';
 import { formatDate } from '@/lib/utils';
 import { formatShareMessage } from '@/lib/translations';
-import type { DossierLanguage, DossierContent } from '@/lib/types';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import type { DossierLanguage, DossierContent, Lead } from '@/lib/types';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -44,17 +47,55 @@ interface PageProps {
 
 export default function LeadDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
-  const [selectedLang, setSelectedLang] = useState<DossierLanguage>('hi');
-  const [parentPhone, setParentPhone] = useState<string>('919876543210');
+  const leadId = resolvedParams.id;
+
+  // Resolve initial lead from demo store or fallback
+  const initialLead = getLeadById(leadId) || demoLead;
+  const initialDossier = getDossierByLeadId(initialLead.id);
+  const initialToken = initialDossier?.share_token || `demo-${initialLead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2024`;
+
+  const [lead, setLead] = useState<Lead>(initialLead);
+  const [selectedLang, setSelectedLang] = useState<DossierLanguage>(initialLead.preferred_language || 'hi');
+  const [parentPhone, setParentPhone] = useState<string>(initialLead.parent_phone || '+91 98765 43210');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [dossierToken, setDossierToken] = useState<string>(DEMO_DOSSIER_TOKEN);
+  const [dossierToken, setDossierToken] = useState<string>(initialToken);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<DossierContent | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
-
   const [timeline, setTimeline] = useState(demoActivityLogs);
+
+  // Sync lead data from Supabase if available
+  useEffect(() => {
+    async function fetchLeadFromSupabase() {
+      if (!isSupabaseConfigured()) return;
+      try {
+        const { data, error } = await supabase
+          .from('leads')
+          .select('*, university:universities(*), dossiers(*)')
+          .eq('id', leadId)
+          .single();
+
+        if (data && !error) {
+          setLead(data as Lead);
+          if (data.preferred_language) {
+            setSelectedLang(data.preferred_language as DossierLanguage);
+          }
+          if (data.parent_phone) {
+            setParentPhone(data.parent_phone);
+          }
+          if (data.dossiers && data.dossiers.length > 0) {
+            setDossierToken(data.dossiers[0].share_token);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load lead from Supabase, using local fallback:', e);
+      }
+    }
+
+    fetchLeadFromSupabase();
+  }, [leadId]);
 
   const dossierUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/dossier/${dossierToken}`
@@ -62,8 +103,8 @@ export default function LeadDetailPage({ params }: PageProps) {
 
   const shareText = formatShareMessage(
     selectedLang,
-    demoLead.parent_name,
-    demoLead.student_name,
+    lead.parent_name,
+    lead.student_name,
     demoUniversity.name,
     dossierUrl
   );
@@ -82,7 +123,7 @@ export default function LeadDetailPage({ params }: PageProps) {
   const handleWhatsAppShare = (url: string, channelName: string) => {
     const newLog = {
       id: `act-${Date.now()}`,
-      lead_id: demoLead.id,
+      lead_id: lead.id,
       dossier_id: null,
       action: 'dossier_shared',
       details: {
@@ -105,7 +146,7 @@ export default function LeadDetailPage({ params }: PageProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lead_id: demoLead.id,
+          lead_id: lead.id,
           language: selectedLang,
         }),
       });
@@ -116,17 +157,18 @@ export default function LeadDetailPage({ params }: PageProps) {
       }
 
       const data = await res.json();
-      setDossierToken(data.share_token || DEMO_DOSSIER_TOKEN);
+      const token = data.share_token || dossierToken;
+      setDossierToken(token);
       setGeneratedContent(data.dossier?.generated_content || null);
       setHasGenerated(true);
 
       // Append activity log
       const newLog = {
         id: `act-${Date.now()}`,
-        lead_id: demoLead.id,
+        lead_id: lead.id,
         dossier_id: data.dossier?.id || null,
         action: 'dossier_generated',
-        details: { language: selectedLang, token: data.share_token },
+        details: { language: selectedLang, token },
         performed_by: 'Counsellor (Admin)',
         created_at: new Date().toISOString(),
       };
@@ -151,7 +193,32 @@ export default function LeadDetailPage({ params }: PageProps) {
     setTimeout(() => setCopiedMessage(false), 2000);
   };
 
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  // Specific counsellor notes per demo lead
+  const getCounsellorNote = () => {
+    if (lead.student_name.includes('Aarav')) {
+      return 'Rajesh Sharma (father) indicated high interest in computer science, but expressed skepticism about ed-tech fee splits and wanted verifiable proof regarding whether the degree certificate is issued directly by Noida International University.';
+    }
+    if (lead.student_name.includes('Rohit')) {
+      return 'Anand Kulkarni (father) inquired about hostel facilities, ragging prevention policies, and Telugu-speaking faculty or student peers from Telangana/Andhra Pradesh. Dossier delivered.';
+    }
+    if (lead.student_name.includes('Neha')) {
+      return 'Suresh Gupta (father) requested clarification on UGC approval, NAAC recognition, and statutory accreditation before confirming admission. Seat-block fee paid after review.';
+    }
+    return `Parent expressed keen interest in the NIAT curriculum and university accreditation. Awaiting verification review in ${selectedLang.toUpperCase()}.`;
+  };
+
+  const getStatusBadge = () => {
+    switch (lead.lead_status) {
+      case 'stalled':
+        return <Badge variant="pending" className="text-2xs">Stalled ({lead.days_since_counselling || 8} Days)</Badge>;
+      case 'dossier_delivered':
+        return <Badge className="bg-purple-50 text-purple-700 border-purple-200 text-2xs">Dossier Delivered</Badge>;
+      case 'seat_block_paid':
+        return <Badge variant="verified" className="text-2xs">Seat-Block Paid</Badge>;
+      default:
+        return <Badge variant="outline" className="text-2xs">{lead.lead_status.replace(/_/g, ' ')}</Badge>;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -167,15 +234,15 @@ export default function LeadDetailPage({ params }: PageProps) {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold tracking-tight text-midnight-950 font-serif">
-                Lead: {demoLead.student_name}
+                Lead: {lead.student_name}
               </h1>
-              <Badge variant="pending" className="text-2xs">Stalled (8 Days)</Badge>
+              {getStatusBadge()}
               <Badge variant="outline" className="text-2xs bg-amber-50 text-amber-900 border-amber-300 font-mono">
                 Test Cohort
               </Badge>
             </div>
             <p className="text-xs text-midnight-500 mt-0.5">
-              Parent: {demoLead.parent_name} • Preferred Language: Hindi (हिंदी)
+              Parent: {lead.parent_name} • Preferred Language: {selectedLang === 'hi' ? 'Hindi (हिंदी)' : selectedLang === 'te' ? 'Telugu (తెలుగు)' : 'English'}
             </p>
           </div>
         </div>
@@ -214,11 +281,11 @@ export default function LeadDetailPage({ params }: PageProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="space-y-1">
                   <span className="text-midnight-500 block">Student Full Name</span>
-                  <span className="font-semibold text-midnight-950 text-sm">{demoLead.student_name}</span>
+                  <span className="font-semibold text-midnight-950 text-sm">{lead.student_name}</span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-midnight-500 block">Parent / Guardian Name</span>
-                  <span className="font-semibold text-midnight-950 text-sm">{demoLead.parent_name}</span>
+                  <span className="font-semibold text-midnight-950 text-sm">{lead.parent_name}</span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-midnight-500 block">Parent WhatsApp Mobile</span>
@@ -238,29 +305,36 @@ export default function LeadDetailPage({ params }: PageProps) {
                   <span className="text-midnight-500 block">Location / City</span>
                   <span className="font-medium text-midnight-900 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-midnight-500" />
-                    {demoLead.city}, {demoLead.state}
+                    {lead.city}, {lead.state}
                   </span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-midnight-500 block">Counselling Completed</span>
                   <span className="font-medium text-midnight-900 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-midnight-500" />
-                    {formatDate(demoLead.counselling_date!)} (8 days ago)
+                    {lead.counselling_date ? formatDate(lead.counselling_date) : 'Completed'} ({lead.days_since_counselling ?? 8} days ago)
                   </span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-midnight-500 block">Seat-Block Payment Status</span>
-                  <span className="font-semibold text-amber-700 flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-amber-600" />
-                    Not Paid (Stalled)
-                  </span>
+                  {lead.seat_block_payment ? (
+                    <span className="font-semibold text-emerald-700 flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                      Paid {lead.seat_block_payment_date ? `(${formatDate(lead.seat_block_payment_date)})` : ''}
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-amber-700 flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-600" />
+                      Not Paid (Pending)
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="mt-4 p-3 bg-amber-50/70 border border-amber-200/80 rounded-md text-xs text-amber-900 flex items-start gap-2.5">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <strong className="font-semibold">Counsellor Note:</strong> Rajesh Sharma (father) indicated high interest in computer science, but expressed skepticism about ed-tech fee splits and wanted verifiable proof regarding whether the degree certificate is issued directly by Noida International University.
+                  <strong className="font-semibold">Counsellor Note:</strong> {getCounsellorNote()}
                 </div>
               </div>
             </CardContent>
@@ -348,54 +422,56 @@ export default function LeadDetailPage({ params }: PageProps) {
                       <Phone className="w-3.5 h-3.5 text-[#25D366]" />
                       Parent WhatsApp Phone Number:
                     </span>
-                    <span className="text-[10px] text-midnight-400 font-mono">Country code + number (no spaces)</span>
+                    <span className="text-[10px] text-midnight-400 font-normal">
+                      Include country code (e.g. +91)
+                    </span>
                   </label>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex gap-2">
                     <input
-                      type="tel"
+                      type="text"
                       value={parentPhone}
                       onChange={(e) => setParentPhone(e.target.value)}
-                      placeholder="e.g. 919876543210"
-                      className="flex-1 h-9 px-3 text-xs bg-ivory-50 border border-midnight-200 rounded-md font-mono text-midnight-950 focus:outline-none focus:ring-1 focus:ring-midnight-900"
+                      placeholder="+91 98765 43210"
+                      className="flex-1 h-9 px-3 text-xs font-mono rounded-md border border-midnight-200 bg-white text-midnight-900 focus:outline-hidden focus:ring-1 focus:ring-midnight-400"
                     />
-                    <span className="text-[11px] text-midnight-500 font-sans">
-                      Target: <strong>Rajesh Sharma</strong>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setParentPhone(lead.parent_phone || '+91 98765 43210')}
+                      className="text-2xs h-9 px-2.5 text-midnight-600"
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-midnight-500 pt-1">
+                    <Info className="w-3 h-3 text-midnight-400 shrink-0" />
+                    <span>
+                      {cleanPhone
+                        ? `Target recipient set to: +${cleanPhone}. WhatsApp will open directly into this chat.`
+                        : 'No phone number provided. WhatsApp will ask you to pick a contact.'}
                     </span>
                   </div>
-                  
-                  {/* Explanation of Click-to-chat */}
-                  <div className="mt-2 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-md text-[11px] text-emerald-950 space-y-1">
-                    <p className="font-semibold text-emerald-900 flex items-center gap-1.5">
-                      <Info className="w-3.5 h-3.5 text-emerald-700" />
-                      How Direct WhatsApp Chat Works:
-                    </p>
-                    <p className="leading-relaxed">
-                      • <strong>Why contacts/search appeared:</strong> The default number <code className="font-mono bg-emerald-100/70 px-1 py-0.5 rounded text-emerald-900">+91 98765 43210</code> is fictional demo data. WhatsApp verifies if the number is registered. Since it's not active on WhatsApp, WhatsApp Web falls back to your contacts search bar.
-                    </p>
-                    <p className="leading-relaxed">
-                      • <strong>To open a 1-on-1 chat directly:</strong> Type any active WhatsApp number (such as your own phone number with country code, e.g. <code className="font-mono bg-emerald-100/70 px-1 py-0.5 rounded text-emerald-900">91XXXXXXXXXX</code>) into the box above and click either button!
-                    </p>
-                    <p className="text-[10px] text-emerald-800 italic">
-                      * In compliance with WhatsApp anti-spam policies, click-to-chat pre-fills the message and requires the user to tap Send in WhatsApp.
-                    </p>
+                </div>
+
+                {/* Generated Dossier Link */}
+                <div className="p-3 bg-white border border-midnight-200/80 rounded-md space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-midnight-500">
+                    <span>Direct Parent Dossier URL:</span>
+                    <button
+                      onClick={handleCopyLink}
+                      className="text-verified-dark font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedLink ? <Check className="w-3 h-3 text-verified" /> : <Copy className="w-3 h-3" />}
+                      {copiedLink ? 'Copied link' : 'Copy link'}
+                    </button>
+                  </div>
+                  <div className="p-2 bg-midnight-50 rounded border border-midnight-100 font-mono text-2xs text-midnight-800 break-all select-all">
+                    {dossierUrl}
                   </div>
                 </div>
 
-                {/* Link Box */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={dossierUrl}
-                    className="flex-1 h-9 px-3 text-xs bg-white border border-midnight-200 rounded-md font-mono text-midnight-700 select-all"
-                  />
-                  <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-9 text-xs">
-                    {copiedLink ? <Check className="w-3.5 h-3.5 mr-1 text-verified" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                    {copiedLink ? 'Copied' : 'Copy Link'}
-                  </Button>
-                </div>
-
-                {/* Pre-drafted text */}
+                {/* Pre-drafted WhatsApp message preview */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] text-midnight-500">
                     <span>Pre-drafted Message ({selectedLang.toUpperCase()}):</span>
@@ -450,7 +526,7 @@ export default function LeadDetailPage({ params }: PageProps) {
                 Lead Event Timeline
               </CardTitle>
               <CardDescription className="text-xs text-midnight-500">
-                Audited journey for Rajesh Sharma & Aarav
+                Audited journey for {lead.parent_name} & {lead.student_name}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5">

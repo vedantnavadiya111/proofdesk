@@ -40,6 +40,7 @@ import {
   demoLead,
   demoVolunteer,
   DEMO_DOSSIER_TOKEN,
+  getDossierByToken,
 } from '@/lib/demo-data';
 import { buildFallbackDossier } from '@/lib/gemini';
 import { t, getTranslations, formatShareMessage } from '@/lib/translations';
@@ -51,6 +52,7 @@ import type {
   EvidenceStatus,
   PeerVolunteer,
   SourceCitation,
+  Lead,
 } from '@/lib/types';
 
 interface PageProps {
@@ -60,9 +62,12 @@ interface PageProps {
 export default function PublicDossierPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const token = resolvedParams.token;
+  const initialMatched = getDossierByToken(token);
 
-  // Language state (defaults to lead's preference or Hindi for sample)
-  const [lang, setLang] = useState<DossierLanguage>('hi');
+  // Language state (defaults to matched lead preference or Hindi)
+  const [lang, setLang] = useState<DossierLanguage>(initialMatched?.lead.preferred_language || 'hi');
+  const [currentLead, setCurrentLead] = useState<Lead>(initialMatched?.lead || demoLead);
+  const [currentVolunteer, setCurrentVolunteer] = useState<PeerVolunteer>(demoVolunteer);
   const [dossierData, setDossierData] = useState<DossierContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
@@ -81,12 +86,15 @@ export default function PublicDossierPage({ params }: PageProps) {
         const res = await fetch(`/api/dossier/${token}?lang=${lang}`);
         if (res.ok) {
           const data = await res.json();
+          if (data.lead) setCurrentLead(data.lead);
+          if (data.volunteer) setCurrentVolunteer(data.volunteer);
+
           if (data.dossier?.generated_content) {
             setDossierData(data.dossier.generated_content);
           } else {
             // Build fallback for this language
             const fallback = buildFallbackDossier(
-              data.lead?.student_name || demoLead.student_name,
+              data.lead?.student_name || initialMatched?.lead.student_name || demoLead.student_name,
               data.university?.name || demoUniversity.name,
               lang,
               data.evidence || demoEvidence
@@ -96,7 +104,7 @@ export default function PublicDossierPage({ params }: PageProps) {
         } else {
           // Local demo fallback
           const fallback = buildFallbackDossier(
-            demoLead.student_name,
+            initialMatched?.lead.student_name || demoLead.student_name,
             demoUniversity.name,
             lang,
             demoEvidence
@@ -106,7 +114,7 @@ export default function PublicDossierPage({ params }: PageProps) {
       } catch {
         // Fallback
         const fallback = buildFallbackDossier(
-          demoLead.student_name,
+          initialMatched?.lead.student_name || demoLead.student_name,
           demoUniversity.name,
           lang,
           demoEvidence
@@ -135,8 +143,8 @@ export default function PublicDossierPage({ params }: PageProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lead_id: demoLead.id,
-          volunteer_id: demoVolunteer.id,
+          lead_id: currentLead.id,
+          volunteer_id: currentVolunteer.id,
           preferred_language: lang,
           preferred_time: preferredTime,
         }),
@@ -199,7 +207,7 @@ export default function PublicDossierPage({ params }: PageProps) {
   }
 
   const d = dossierData!;
-  const volunteer = demoVolunteer;
+  const volunteer = currentVolunteer;
 
   return (
     <div className="min-h-screen bg-ivory-100 text-midnight-950 font-sans antialiased selection:bg-verified-light selection:text-verified-dark pb-20">
@@ -590,7 +598,7 @@ export default function PublicDossierPage({ params }: PageProps) {
               <div>
                 <span className="text-[10px] text-midnight-400 font-mono uppercase block">{t('peer_language', lang)}</span>
                 <span className="font-semibold text-midnight-900">
-                  {volunteer.language === 'hi' ? 'Hindi (हिंदी)' : 'English'}
+                  {volunteer.language === 'hi' ? 'Hindi (हिंदी)' : volunteer.language === 'te' ? 'Telugu (తెలుగు)' : 'English'}
                 </span>
               </div>
               <div>

@@ -205,8 +205,10 @@ export const demoEvidence: Evidence[] = [
   },
 ];
 
-// ─── Sample Lead ────────────────────────────────────────────
+// ─── Sample Leads ───────────────────────────────────────────
 export const DEMO_LEAD_ID = '00000000-0000-0000-0000-000000000010';
+export const DEMO_LEAD_ROHIT_ID = '00000000-0000-0000-0000-000000000011';
+export const DEMO_LEAD_NEHA_ID = '00000000-0000-0000-0000-000000000012';
 
 export const demoLead: Lead = {
   id: DEMO_LEAD_ID,
@@ -231,6 +233,54 @@ export const demoLead: Lead = {
   university: demoUniversity,
 };
 
+export const demoLeadRohit: Lead = {
+  id: DEMO_LEAD_ROHIT_ID,
+  student_name: 'Rohit Kulkarni',
+  parent_name: 'Anand Kulkarni',
+  parent_phone: '+91 98490 12345',
+  parent_email: 'anand.kulkarni@example.com',
+  university_id: DEMO_UNIVERSITY_ID,
+  city: 'Hyderabad',
+  state: 'Telangana',
+  preferred_language: 'te',
+  lead_source: 'NIAT counselling',
+  lead_status: 'dossier_delivered',
+  experiment_group: 'test',
+  counselling_date: '2024-11-04',
+  counselling_completed: true,
+  days_since_counselling: 6,
+  seat_block_payment: false,
+  seat_block_payment_date: null,
+  created_at: '2024-10-29T10:00:00Z',
+  updated_at: '2024-11-10T10:00:00Z',
+  university: demoUniversity,
+};
+
+export const demoLeadNeha: Lead = {
+  id: DEMO_LEAD_NEHA_ID,
+  student_name: 'Neha Gupta',
+  parent_name: 'Suresh Gupta',
+  parent_phone: '+91 98111 22334',
+  parent_email: 'suresh.gupta@example.com',
+  university_id: DEMO_UNIVERSITY_ID,
+  city: 'Delhi NCR',
+  state: 'Delhi',
+  preferred_language: 'en',
+  lead_source: 'NIAT counselling',
+  lead_status: 'seat_block_paid',
+  experiment_group: 'test',
+  counselling_date: '2024-10-25',
+  counselling_completed: true,
+  days_since_counselling: 16,
+  seat_block_payment: true,
+  seat_block_payment_date: '2024-11-06',
+  created_at: '2024-10-20T10:00:00Z',
+  updated_at: '2024-11-06T10:00:00Z',
+  university: demoUniversity,
+};
+
+export const demoLeads: Lead[] = [demoLead, demoLeadRohit, demoLeadNeha];
+
 // ─── Peer Volunteer ─────────────────────────────────────────
 export const DEMO_VOLUNTEER_ID = '00000000-0000-0000-0000-000000000020';
 
@@ -252,8 +302,10 @@ export const demoVolunteer: PeerVolunteer = {
   university: demoUniversity,
 };
 
-// ─── Demo Dossier ───────────────────────────────────────────
+// ─── Demo Dossiers ──────────────────────────────────────────
 export const DEMO_DOSSIER_TOKEN = 'demo-aarav-sharma-niu-2024';
+export const DEMO_DOSSIER_ROHIT_TOKEN = 'demo-rohit-kulkarni-niu-2024';
+export const DEMO_DOSSIER_NEHA_TOKEN = 'demo-neha-gupta-niu-2024';
 
 export const demoDossier: Dossier = {
   id: '00000000-0000-0000-0000-000000000030',
@@ -268,6 +320,66 @@ export const demoDossier: Dossier = {
   created_at: '2024-11-10T10:00:00Z',
   updated_at: '2024-11-10T10:00:00Z',
 };
+
+export const demoDossierRohit: Dossier = {
+  id: '00000000-0000-0000-0000-000000000031',
+  lead_id: DEMO_LEAD_ROHIT_ID,
+  university_id: DEMO_UNIVERSITY_ID,
+  language: 'te',
+  share_token: DEMO_DOSSIER_ROHIT_TOKEN,
+  generated_content: null,
+  generation_status: 'completed',
+  generation_error: null,
+  view_count: 2,
+  created_at: '2024-11-10T10:00:00Z',
+  updated_at: '2024-11-10T10:00:00Z',
+};
+
+export const demoDossierNeha: Dossier = {
+  id: '00000000-0000-0000-0000-000000000032',
+  lead_id: DEMO_LEAD_NEHA_ID,
+  university_id: DEMO_UNIVERSITY_ID,
+  language: 'en',
+  share_token: DEMO_DOSSIER_NEHA_TOKEN,
+  generated_content: null,
+  generation_status: 'completed',
+  generation_error: null,
+  view_count: 5,
+  created_at: '2024-11-06T10:00:00Z',
+  updated_at: '2024-11-06T10:00:00Z',
+};
+
+export const demoDossiers: Dossier[] = [demoDossier, demoDossierRohit, demoDossierNeha];
+
+// Helper functions for dynamic lead and dossier resolution
+export function getLeadById(id: string): Lead | undefined {
+  return demoLeads.find((lead) => lead.id === id);
+}
+
+export function getDossierByLeadId(leadId: string): Dossier | undefined {
+  return demoDossiers.find((dossier) => dossier.lead_id === leadId);
+}
+
+export function getDossierByToken(token: string): { dossier: Dossier; lead: Lead } | undefined {
+  const dossier = demoDossiers.find((d) => d.share_token === token);
+  if (dossier) {
+    const lead = demoLeads.find((l) => l.id === dossier.lead_id) || demoLead;
+    return { dossier, lead };
+  }
+  
+  // Fuzzy or slug match
+  const lower = token.toLowerCase();
+  if (lower.includes('rohit')) {
+    return { dossier: demoDossierRohit, lead: demoLeadRohit };
+  }
+  if (lower.includes('neha')) {
+    return { dossier: demoDossierNeha, lead: demoLeadNeha };
+  }
+  if (lower.includes('aarav') || token === DEMO_DOSSIER_TOKEN) {
+    return { dossier: demoDossier, lead: demoLead };
+  }
+  return undefined;
+}
 
 // ─── Activity Timeline ──────────────────────────────────────
 export const demoActivityLogs: ActivityLog[] = [

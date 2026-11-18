@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -18,61 +18,33 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { demoLead, demoDossier, DEMO_DOSSIER_TOKEN } from '@/lib/demo-data';
+import { demoLead, demoLeads, getDossierByLeadId } from '@/lib/demo-data';
 import { formatDate } from '@/lib/utils';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { Lead, LeadStatus } from '@/lib/types';
 
 export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [leads] = useState<Lead[]>([
-    demoLead,
-    // Add two complementary demo leads to make the table realistic and demonstrate filtering
-    {
-      id: '00000000-0000-0000-0000-000000000011',
-      student_name: 'Rohit Kulkarni',
-      parent_name: 'Anand Kulkarni',
-      parent_phone: null,
-      parent_email: null,
-      university_id: demoLead.university_id,
-      city: 'Hyderabad',
-      state: 'Telangana',
-      preferred_language: 'te',
-      lead_source: 'NIAT counselling',
-      lead_status: 'dossier_delivered',
-      experiment_group: 'test',
-      counselling_date: '2024-11-04',
-      counselling_completed: true,
-      days_since_counselling: 6,
-      seat_block_payment: false,
-      seat_block_payment_date: null,
-      created_at: '2024-10-29T10:00:00Z',
-      updated_at: '2024-11-10T10:00:00Z',
-      university: demoLead.university,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000012',
-      student_name: 'Neha Gupta',
-      parent_name: 'Suresh Gupta',
-      parent_phone: null,
-      parent_email: null,
-      university_id: demoLead.university_id,
-      city: 'Delhi NCR',
-      state: 'Delhi',
-      preferred_language: 'en',
-      lead_source: 'NIAT counselling',
-      lead_status: 'seat_block_paid',
-      experiment_group: 'test',
-      counselling_date: '2024-10-25',
-      counselling_completed: true,
-      days_since_counselling: 16,
-      seat_block_payment: true,
-      seat_block_payment_date: '2024-11-06',
-      created_at: '2024-10-20T10:00:00Z',
-      updated_at: '2024-11-06T10:00:00Z',
-      university: demoLead.university,
-    },
-  ]);
+  const [leads, setLeads] = useState<Lead[]>(demoLeads);
+
+  useEffect(() => {
+    async function fetchLeads() {
+      if (!isSupabaseConfigured()) return;
+      try {
+        const { data, error } = await supabase
+          .from('leads')
+          .select('*, university:universities(*), dossiers(*)')
+          .order('created_at', { ascending: false });
+        if (data && !error && data.length > 0) {
+          setLeads(data as Lead[]);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch leads from Supabase:', e);
+      }
+    }
+    fetchLeads();
+  }, []);
 
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
@@ -231,19 +203,26 @@ export default function LeadsPage() {
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1.5">
-                        <Link href={`/admin/leads/${lead.id}`}>
-                          <Button size="sm" variant="default" className="h-7 text-xs px-2.5 bg-midnight-900 hover:bg-midnight-800">
-                            <Sparkles className="w-3 h-3 mr-1 text-verified" />
-                            Dossier
-                          </Button>
-                        </Link>
-                        <Link href={`/dossier/demo-aarav-sharma-niu-2024`} target="_blank">
-                          <Button size="sm" variant="outline" className="h-7 text-xs px-2">
-                            <ExternalLink className="w-3 h-3" />
-                          </Button>
-                        </Link>
-                      </div>
+                      {(() => {
+                        const token = lead.dossiers?.[0]?.share_token ||
+                          getDossierByLeadId(lead.id)?.share_token ||
+                          `demo-${lead.student_name.toLowerCase().replace(/\s+/g, '-')}-niu-2024`;
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <Link href={`/admin/leads/${lead.id}`}>
+                              <Button size="sm" variant="default" className="h-7 text-xs px-2.5 bg-midnight-900 hover:bg-midnight-800">
+                                <Sparkles className="w-3 h-3 mr-1 text-verified" />
+                                Dossier
+                              </Button>
+                            </Link>
+                            <Link href={`/dossier/${token}`} target="_blank" title={`View ${lead.student_name}'s Dossier`}>
+                              <Button size="sm" variant="outline" className="h-7 text-xs px-2 hover:bg-verified/10 hover:border-verified/40">
+                                <ExternalLink className="w-3 h-3" />
+                              </Button>
+                            </Link>
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     <td className="py-3.5 px-4 text-right">

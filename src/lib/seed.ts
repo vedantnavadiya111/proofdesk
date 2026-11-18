@@ -5,7 +5,16 @@ import { loadEnvConfig } from '@next/env';
 loadEnvConfig(process.cwd());
 
 import { createClient } from '@supabase/supabase-js';
-import { demoUniversity, demoEvidence, demoLead, demoVolunteer, demoDossier, demoActivityLogs } from './demo-data';
+import {
+  demoUniversity,
+  demoEvidence,
+  demoLead,
+  demoLeads,
+  demoVolunteer,
+  demoDossier,
+  demoDossiers,
+  demoActivityLogs,
+} from './demo-data';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -66,31 +75,33 @@ async function seed() {
   }
   console.log(`    ✓ ${demoEvidence.length} evidence records inserted`);
 
-  // 3. Lead
-  console.log('  → Inserting sample lead...');
-  const { error: leadError } = await supabase
-    .from('leads')
-    .upsert({
-      id: demoLead.id,
-      student_name: demoLead.student_name,
-      parent_name: demoLead.parent_name,
-      parent_phone: demoLead.parent_phone,
-      parent_email: demoLead.parent_email,
-      university_id: demoLead.university_id,
-      city: demoLead.city,
-      state: demoLead.state,
-      preferred_language: demoLead.preferred_language,
-      lead_source: demoLead.lead_source,
-      lead_status: demoLead.lead_status,
-      experiment_group: demoLead.experiment_group,
-      counselling_date: demoLead.counselling_date,
-      counselling_completed: demoLead.counselling_completed,
-      days_since_counselling: demoLead.days_since_counselling,
-      seat_block_payment: demoLead.seat_block_payment,
-      seat_block_payment_date: demoLead.seat_block_payment_date,
-    }, { onConflict: 'id' });
-  if (leadError) throw leadError;
-  console.log('    ✓ Lead inserted');
+  // 3. Leads
+  console.log('  → Inserting sample leads...');
+  for (const lead of demoLeads) {
+    const { error: leadError } = await supabase
+      .from('leads')
+      .upsert({
+        id: lead.id,
+        student_name: lead.student_name,
+        parent_name: lead.parent_name,
+        parent_phone: lead.parent_phone,
+        parent_email: lead.parent_email,
+        university_id: lead.university_id,
+        city: lead.city,
+        state: lead.state,
+        preferred_language: lead.preferred_language,
+        lead_source: lead.lead_source,
+        lead_status: lead.lead_status,
+        experiment_group: lead.experiment_group,
+        counselling_date: lead.counselling_date,
+        counselling_completed: lead.counselling_completed,
+        days_since_counselling: lead.days_since_counselling,
+        seat_block_payment: lead.seat_block_payment,
+        seat_block_payment_date: lead.seat_block_payment_date,
+      }, { onConflict: 'id' });
+    if (leadError) throw leadError;
+  }
+  console.log(`    ✓ ${demoLeads.length} leads inserted`);
 
   // 4. Peer volunteer
   console.log('  → Inserting peer volunteer...');
@@ -113,23 +124,25 @@ async function seed() {
   if (volError) throw volError;
   console.log('    ✓ Volunteer inserted');
 
-  // 5. Demo dossier placeholder
-  console.log('  → Inserting dossier placeholder...');
-  const { error: dosError } = await supabase
-    .from('dossiers')
-    .upsert({
-      id: demoDossier.id,
-      lead_id: demoDossier.lead_id,
-      university_id: demoDossier.university_id,
-      language: demoDossier.language,
-      share_token: demoDossier.share_token,
-      generated_content: demoDossier.generated_content,
-      generation_status: demoDossier.generation_status,
-      generation_error: demoDossier.generation_error,
-      view_count: demoDossier.view_count,
-    }, { onConflict: 'id' });
-  if (dosError) throw dosError;
-  console.log('    ✓ Dossier placeholder inserted');
+  // 5. Demo dossiers
+  console.log('  → Inserting dossier placeholders...');
+  for (const dos of demoDossiers) {
+    const { error: dosError } = await supabase
+      .from('dossiers')
+      .upsert({
+        id: dos.id,
+        lead_id: dos.lead_id,
+        university_id: dos.university_id,
+        language: dos.language,
+        share_token: dos.share_token,
+        generated_content: dos.generated_content,
+        generation_status: dos.generation_status,
+        generation_error: dos.generation_error,
+        view_count: dos.view_count,
+      }, { onConflict: 'id' });
+    if (dosError) throw dosError;
+  }
+  console.log(`    ✓ ${demoDossiers.length} dossier placeholders inserted`);
 
   // 6. Activity logs
   console.log('  → Inserting activity logs...');
